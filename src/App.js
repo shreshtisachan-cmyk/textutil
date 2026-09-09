@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 
 import Navbar from './components/Navbar';
@@ -8,14 +7,11 @@ import About from './components/About';
 
 import './App.css';
 
-// React Router commented
-/*
 import {
   BrowserRouter as Router,
   Routes,
   Route
 } from 'react-router-dom';
-*/
 
 function App() {
 
@@ -71,8 +67,7 @@ function App() {
   };
 
   return (
-    <>
-      {/* Router commented */}
+    <Router>
 
       <Navbar
         title="TextUtil"
@@ -85,13 +80,9 @@ function App() {
 
       <div className="container my-3">
 
-        {/* Routes commented
         <Routes>
-          <Route
-            path="/about"
-            element={<About />}
-          />
 
+          {/* Home */}
           <Route
             path="/"
             element={
@@ -102,23 +93,21 @@ function App() {
               />
             }
           />
+
+          {/* About */}
+          <Route
+            path="/about"
+            element={
+              <About />
+            }
+          />
+
         </Routes>
-        */}
-
-        {/* Directly showing TextForm */}
-
-        <TextForm
-          heading="Enter the text to Analyze"
-          mode={mode}
-          showAlert={showAlert}
-        />
 
       </div>
 
-      {/* </Router> */}
-    </>
+    </Router>
   );
 }
 
 export default App;
-

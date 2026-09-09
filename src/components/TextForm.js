@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 
 export default function TextForm(props) {
-
   const [text, setText] = useState('');
+  const [savedTexts, setSavedTexts] = useState([]);
 
   // Convert text to uppercase
   const handleUpClick = () => {
@@ -35,8 +35,8 @@ export default function TextForm(props) {
   };
 
   // Copy text
-  const handleCopyClick = () => {
-    navigator.clipboard.writeText(text);
+  const handleCopyClick = async () => {
+    await navigator.clipboard.writeText(text);
 
     props.showAlert(
       'Text has been copied',
@@ -46,12 +46,12 @@ export default function TextForm(props) {
 
   // Remove extra spaces
   const handleExtraSpaces = () => {
-    setText(
-      text
-        .split(/\s+/)
-        .filter(word => word !== '')
-        .join(' ')
-    );
+    const newText = text
+      .split(/\s+/)
+      .filter(word => word !== '')
+      .join(' ');
+
+    setText(newText);
 
     props.showAlert(
       'Extra spaces have been removed',
@@ -62,6 +62,117 @@ export default function TextForm(props) {
   // Handle textarea changes
   const handleOnChange = (event) => {
     setText(event.target.value);
+  };
+
+  // Save text to MongoDB
+  const handleSaveText = async () => {
+    if (text.trim() === '') {
+      props.showAlert(
+        'Please enter some text first',
+        'warning'
+      );
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        'http://localhost:5000/api/texts',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            text: text
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSavedTexts([...savedTexts, data]);
+
+        props.showAlert(
+          'Text saved successfully',
+          'success'
+        );
+      } else {
+        props.showAlert(
+          data.message || 'Failed to save text',
+          'danger'
+        );
+      }
+    } catch (error) {
+      console.error(error);
+
+      props.showAlert(
+        'Backend server is not running',
+        'danger'
+      );
+    }
+  };
+
+  // Get texts from MongoDB
+  const handleGetTexts = async () => {
+    try {
+      const response = await fetch(
+        'http://localhost:5000/api/texts'
+      );
+
+      const data = await response.json();
+
+      setSavedTexts(data);
+
+      props.showAlert(
+        'Saved texts loaded',
+        'success'
+      );
+    } catch (error) {
+      console.error(error);
+
+      props.showAlert(
+        'Unable to connect to backend',
+        'danger'
+      );
+    }
+  };
+
+  // Delete text from MongoDB
+  const handleDeleteText = async (id) => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/texts/${id}`,
+        {
+          method: 'DELETE'
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSavedTexts(
+          savedTexts.filter(item => item._id !== id)
+        );
+
+        props.showAlert(
+          'Text deleted successfully',
+          'success'
+        );
+      } else {
+        props.showAlert(
+          data.message || 'Failed to delete text',
+          'danger'
+        );
+      }
+    } catch (error) {
+      console.error(error);
+
+      props.showAlert(
+        'Unable to connect to backend',
+        'danger'
+      );
+    }
   };
 
   // Word count
@@ -78,7 +189,9 @@ export default function TextForm(props) {
       <div
         className="container my-4"
         style={{
-          color: props.mode === 'dark' ? 'white' : 'black'
+          color: props.mode === 'dark'
+            ? 'white'
+            : 'black'
         }}
       >
 
@@ -86,6 +199,7 @@ export default function TextForm(props) {
           {props.heading}
         </h1>
 
+        {/* Textarea */}
         <div className="mb-3">
           <textarea
             className="form-control"
@@ -96,14 +210,19 @@ export default function TextForm(props) {
             onChange={handleOnChange}
             style={{
               backgroundColor:
-                props.mode === 'dark' ? 'black' : 'white',
+                props.mode === 'dark'
+                  ? 'black'
+                  : 'white',
 
               color:
-                props.mode === 'dark' ? 'white' : 'black'
+                props.mode === 'dark'
+                  ? 'white'
+                  : 'black'
             }}
-          ></textarea>
+          />
         </div>
 
+        {/* Buttons */}
         <div className="mb-4">
 
           <button
@@ -141,8 +260,25 @@ export default function TextForm(props) {
             Clear Text
           </button>
 
+          {/* Save button */}
+          <button
+            className="btn btn-dark mx-1 mb-2"
+            onClick={handleSaveText}
+          >
+            💾 Save Text
+          </button>
+
+          {/* Get texts button */}
+          <button
+            className="btn btn-info mx-1 mb-2"
+            onClick={handleGetTexts}
+          >
+            📂 Load Saved Texts
+          </button>
+
         </div>
 
+        {/* Text Summary */}
         <h2>Your Text Summary</h2>
 
         <p>
@@ -154,18 +290,54 @@ export default function TextForm(props) {
           <strong>{readingTime.toFixed(2)}</strong> minutes read
         </p>
 
+        {/* Preview */}
         <h2>Preview</h2>
 
         <div
           className="border rounded p-3"
           style={{
-            color: props.mode === 'dark' ? 'white' : 'black',
+            color:
+              props.mode === 'dark'
+                ? 'white'
+                : 'black',
+
             backgroundColor:
-              props.mode === 'dark' ? '#212529' : 'white'
+              props.mode === 'dark'
+                ? '#212529'
+                : 'white'
           }}
         >
           {text || 'Nothing to preview'}
         </div>
+
+        {/* Saved Texts */}
+        <h2 className="mt-5">
+          Saved Texts
+        </h2>
+
+        {savedTexts.length === 0 ? (
+          <p>No saved texts yet.</p>
+        ) : (
+          savedTexts.map((item) => (
+            <div
+              key={item._id}
+              className="border rounded p-3 mb-3"
+            >
+              <p className="mb-2">
+                {item.text}
+              </p>
+
+              <button
+                className="btn btn-danger btn-sm"
+                onClick={() =>
+                  handleDeleteText(item._id)
+                }
+              >
+                🗑️ Delete
+              </button>
+            </div>
+          ))
+        )}
 
       </div>
     </>
